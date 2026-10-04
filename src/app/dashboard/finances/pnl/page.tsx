@@ -3,11 +3,11 @@ import { SummaryCard } from "@/components/shared/summary-card"
 import { PnLChart } from "@/components/charts/pnl-chart"
 import { DailyPnLChart } from "@/components/charts/daily-pnl-chart"
 import { ExpenseBreakdown } from "@/components/finances/expense-breakdown"
-import { getPnLData } from "@/lib/mock-data"
+import { getPnLData, PNL_MONTHS } from "@/lib/mock-data"
 import { formatCurrency } from "@/lib/utils"
 
 function getPnLMetrics() {
-  const data = getPnLData(6)
+  const data = getPnLData(PNL_MONTHS)
 
   const totalRevenue = data.reduce((sum, d) => sum + d.revenue, 0)
   const totalExpenses = data.reduce((sum, d) => sum + d.expenses, 0)
@@ -45,13 +45,13 @@ export default function PnLPage() {
           title="Total Revenue"
           value={formatCurrency(metrics.totalRevenue)}
           icon={DollarSign}
-          description="Last 6 months"
+          description={`Last ${PNL_MONTHS} months`}
         />
         <SummaryCard
           title="Total Expenses"
           value={formatCurrency(metrics.totalExpenses)}
           icon={TrendingDown}
-          description="Last 6 months"
+          description={`Last ${PNL_MONTHS} months`}
         />
         <SummaryCard
           title={isProfit ? "Net Profit" : "Net Loss"}

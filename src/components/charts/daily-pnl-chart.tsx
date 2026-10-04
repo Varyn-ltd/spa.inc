@@ -12,7 +12,7 @@ import {
 } from "recharts"
 import { ChartWrapper } from "@/components/shared/chart-wrapper"
 import { getRevenueVsExpenses } from "@/lib/mock-data"
-import { PROFIT_COLOR } from "@/lib/chart-colors"
+import { PROFIT_COLOR, LOSS_COLOR } from "@/lib/chart-colors"
 import { formatCurrency } from "@/lib/utils"
 
 function computeDailyPnL() {
@@ -50,7 +50,7 @@ function CustomTooltip({
       <p className="mb-1 text-sm font-medium">{label}</p>
       <p
         className="text-sm font-medium"
-        style={{ color: isPositive ? "#27AE60" : "#E74C3C" }}
+        style={{ color: isPositive ? PROFIT_COLOR : LOSS_COLOR }}
       >
         Cumulative P&L: {formatCurrency(value)}
       </p>
@@ -61,6 +61,10 @@ function CustomTooltip({
 export function DailyPnLChart() {
   const minProfit = Math.min(...data.map((d) => d.profit))
   const hasNegative = minProfit < 0
+  // Colour the series by where the period actually ends, so a run that closes
+  // in the red is not drawn in the profit colour.
+  const endsInLoss = data.length > 0 && data[data.length - 1].profit < 0
+  const seriesColor = endsInLoss ? LOSS_COLOR : PROFIT_COLOR
 
   return (
     <ChartWrapper title="Daily Profit Trend" description="Cumulative P&L over the last 30 days">
@@ -68,8 +72,8 @@ export function DailyPnLChart() {
         <AreaChart data={data}>
           <defs>
             <linearGradient id="profitGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={PROFIT_COLOR} stopOpacity={0.3} />
-              <stop offset="95%" stopColor={PROFIT_COLOR} stopOpacity={0.05} />
+              <stop offset="5%" stopColor={seriesColor} stopOpacity={0.3} />
+              <stop offset="95%" stopColor={seriesColor} stopOpacity={0.05} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -94,7 +98,7 @@ export function DailyPnLChart() {
           <Area
             type="monotone"
             dataKey="profit"
-            stroke={PROFIT_COLOR}
+            stroke={seriesColor}
             strokeWidth={2}
             fill="url(#profitGradient)"
             activeDot={{ r: 4 }}

@@ -18,6 +18,9 @@ import {
   getActiveClientCount,
   getTodaysAppointments,
   getDailyCosts,
+  getTodaysRevenueChange,
+  getMonthlyRevenueChange,
+  getDailyCostsChange,
 } from "@/lib/mock-data"
 import { formatCurrency } from "@/lib/utils"
 
@@ -26,6 +29,28 @@ const monthlyRevenue = getMonthlyRevenue()
 const activeClients = getActiveClientCount()
 const todaysAppointments = getTodaysAppointments()
 const dailyCosts = getDailyCosts()
+const todaysRevenueChange = getTodaysRevenueChange()
+const monthlyRevenueChange = getMonthlyRevenueChange()
+const dailyCostsChange = getDailyCostsChange()
+
+/** Formats a percentage delta for display, or undefined when there is no baseline. */
+function formatChange(change: number | null): string | undefined {
+  if (change === null) return undefined
+  return `${change > 0 ? "+" : ""}${change.toFixed(1)}%`
+}
+
+/**
+ * For revenue, growth is good. For costs, a decrease is good — pass
+ * `lowerIsBetter` so a falling cost line is still rendered in green.
+ */
+function changeTone(
+  change: number | null,
+  lowerIsBetter = false
+): "positive" | "negative" | "neutral" {
+  if (change === null || change === 0) return "neutral"
+  const good = lowerIsBetter ? change < 0 : change > 0
+  return good ? "positive" : "negative"
+}
 
 export default function DashboardPage() {
   return (
@@ -35,16 +60,16 @@ export default function DashboardPage() {
         <SummaryCard
           title="Today's Revenue"
           value={formatCurrency(todaysRevenue)}
-          change="+12.5%"
-          changeType="positive"
+          change={formatChange(todaysRevenueChange)}
+          changeType={changeTone(todaysRevenueChange)}
           icon={DollarSign}
           description="vs last week"
         />
         <SummaryCard
           title="Monthly Revenue"
           value={formatCurrency(monthlyRevenue)}
-          change="+8.2%"
-          changeType="positive"
+          change={formatChange(monthlyRevenueChange)}
+          changeType={changeTone(monthlyRevenueChange)}
           icon={TrendingUp}
           description="vs last month"
         />
@@ -63,8 +88,8 @@ export default function DashboardPage() {
         <SummaryCard
           title="Daily Costs"
           value={formatCurrency(dailyCosts)}
-          change="-3.1%"
-          changeType="positive"
+          change={formatChange(dailyCostsChange)}
+          changeType={changeTone(dailyCostsChange, true)}
           icon={Receipt}
           description="vs last week"
         />

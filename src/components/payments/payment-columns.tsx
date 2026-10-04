@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { formatCurrency, formatDate, cn } from "@/lib/utils"
-import { getClientById, getStaffById } from "@/lib/mock-data"
+import { getStaffById } from "@/lib/mock-data"
 import type { Payment } from "@/types"
 
 export type EnrichedPayment = Payment & {

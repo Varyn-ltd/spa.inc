@@ -17,6 +17,7 @@ import {
   startOfDay,
   endOfDay,
   startOfMonth,
+  endOfMonth,
   startOfWeek,
   endOfWeek,
   isWithinInterval,
@@ -25,7 +26,6 @@ import {
   format,
   isSameDay,
   parseISO,
-  addDays,
   eachDayOfInterval,
 } from "date-fns"
 
@@ -65,13 +65,15 @@ export function getTodaysRevenue(): number {
     )
     .reduce((sum, p) => sum + p.amount, 0)
 
-  // Fallback for demo if no payments land on "today"
-  return total > 0 ? total : 284700
+  return total
 }
 
 export function getMonthlyRevenue(): number {
   const today = new Date()
   const monthStart = startOfMonth(today)
+  // End on the close of today so month-to-date always includes everything
+  // getTodaysRevenue() counts — otherwise MTD can read lower than today.
+  const monthEnd = endOfDay(today)
 
   const total = payments
     .filter(
@@ -79,12 +81,12 @@ export function getMonthlyRevenue(): number {
         p.status === "COMPLETED" &&
         isWithinInterval(parseISO(p.payment_date), {
           start: monthStart,
-          end: today,
+          end: monthEnd,
         })
     )
     .reduce((sum, p) => sum + p.amount, 0)
 
-  return total > 0 ? total : 1847500
+  return total
 }
 
 export function getActiveClientCount(): number {
@@ -138,6 +140,82 @@ export function getDailyCosts(): number {
   const totalRecent = recentExpenses.reduce((sum, e) => sum + e.amount, 0)
   const avg = Math.round(totalRecent / 30)
   return avg > 0 ? avg : 142300
+}
+
+/**
+ * Months covered by the Profit & Loss report. The fixtures hold roughly 90
+ * days of appointments and expenses, so asking for more than this yields
+ * empty leading months and a header that overstates the window.
+ */
+export const PNL_MONTHS = 3
+
+// ---------------------------------------------------------------------------
+// Period-over-period comparisons
+// ---------------------------------------------------------------------------
+
+function sumCompletedPaymentsBetween(start: Date, end: Date): number {
+  return payments
+    .filter(
+      (p) =>
+        p.status === "COMPLETED" &&
+        isWithinInterval(parseISO(p.payment_date), { start, end })
+    )
+    .reduce((sum, p) => sum + p.amount, 0)
+}
+
+function sumExpensesBetween(start: Date, end: Date): number {
+  return expenses
+    .filter((e) => isWithinInterval(parseISO(e.expense_date), { start, end }))
+    .reduce((sum, e) => sum + e.amount, 0)
+}
+
+/**
+ * Percentage change from `previous` to `current`, rounded to one decimal.
+ * Returns null when there is no baseline to compare against, so callers can
+ * omit the indicator rather than render a meaningless "+100%".
+ */
+export function percentChange(
+  current: number,
+  previous: number
+): number | null {
+  if (previous === 0) return null
+  return Math.round(((current - previous) / previous) * 1000) / 10
+}
+
+/** Today's revenue vs. the same weekday one week ago. */
+export function getTodaysRevenueChange(): number | null {
+  const today = new Date()
+  const lastWeek = subDays(today, 7)
+  return percentChange(
+    sumCompletedPaymentsBetween(startOfDay(today), endOfDay(today)),
+    sumCompletedPaymentsBetween(startOfDay(lastWeek), endOfDay(lastWeek))
+  )
+}
+
+/** Month-to-date revenue vs. the same stretch of the previous month. */
+export function getMonthlyRevenueChange(): number | null {
+  const today = new Date()
+  const prevMonthSameDay = subMonths(today, 1)
+  // Clamp to the previous month's last day so e.g. Mar 31 compares against Feb 28.
+  const prevEnd =
+    prevMonthSameDay > endOfMonth(prevMonthSameDay)
+      ? endOfMonth(prevMonthSameDay)
+      : endOfDay(prevMonthSameDay)
+
+  return percentChange(
+    sumCompletedPaymentsBetween(startOfMonth(today), endOfDay(today)),
+    sumCompletedPaymentsBetween(startOfMonth(prevMonthSameDay), prevEnd)
+  )
+}
+
+/** Today's costs vs. the same weekday one week ago. */
+export function getDailyCostsChange(): number | null {
+  const today = new Date()
+  const lastWeek = subDays(today, 7)
+  return percentChange(
+    sumExpensesBetween(startOfDay(today), endOfDay(today)),
+    sumExpensesBetween(startOfDay(lastWeek), endOfDay(lastWeek))
+  )
 }
 
 // ---------------------------------------------------------------------------

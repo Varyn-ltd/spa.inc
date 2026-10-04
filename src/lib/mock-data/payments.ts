@@ -7,6 +7,9 @@ function pseudoInt(min: number, max: number, seed: number): number {
   return min + (Math.abs(seed) % (max - min + 1))
 }
 
+// Payments not tied to an appointment: gift cards, packages, tips, retail.
+const STANDALONE_PAYMENTS = 120
+
 function generatePayments(): Payment[] {
   const payments: Payment[] = []
   const today = new Date()
@@ -17,11 +20,14 @@ function generatePayments(): Payment[] {
     (a) => a.status === "COMPLETED"
   )
 
-  // Generate 200 payments
-  // ~180 linked to completed appointments, ~20 standalone (gift cards, packages, tips)
-  const linkedCount = Math.min(180, completedAppointments.length)
+  // Every completed appointment produces a payment, plus a tail of standalone
+  // payments (gift cards, package deals, tips, product sales). Capping the
+  // linked count here would silently cap revenue below what the schedule
+  // implies and make the P&L report show a loss.
+  const linkedCount = completedAppointments.length
+  const totalCount = linkedCount + STANDALONE_PAYMENTS
 
-  for (let i = 0; i < 200; i++) {
+  for (let i = 0; i < totalCount; i++) {
     const seed1 = (i * 19 + 7) % 1000
     const seed2 = (i * 29 + 13) % 1000
     const seed3 = (i * 41 + 3) % 1000
@@ -55,7 +61,7 @@ function generatePayments(): Payment[] {
       ]
       amount = standaloneAmounts[seed3 % standaloneAmounts.length]
 
-      const daysAgo = pseudoInt(1, 90, seed1)
+      const daysAgo = pseudoInt(0, 90, seed1)
       paymentDate = format(subDays(today, daysAgo), "yyyy-MM-dd'T'HH:mm:ss'Z'")
     }
 

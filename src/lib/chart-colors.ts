@@ -14,3 +14,4 @@ export const CHART_COLORS = [
 export const REVENUE_COLOR = "#2E86C1"
 export const EXPENSE_COLOR = "#E74C3C"
 export const PROFIT_COLOR = "#27AE60"
+export const LOSS_COLOR = "#E74C3C"

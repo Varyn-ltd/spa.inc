@@ -11,11 +11,11 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { ChartWrapper } from "@/components/shared/chart-wrapper"
-import { getPnLData } from "@/lib/mock-data"
+import { getPnLData, PNL_MONTHS } from "@/lib/mock-data"
 import { REVENUE_COLOR, EXPENSE_COLOR } from "@/lib/chart-colors"
 import { formatCurrency } from "@/lib/utils"
 
-const data = getPnLData(6)
+const data = getPnLData(PNL_MONTHS)
 
 function CustomTooltip({
   active,

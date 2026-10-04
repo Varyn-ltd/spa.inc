@@ -3,7 +3,6 @@
 import { type ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
 import { formatCurrency, formatDate, cn } from "@/lib/utils"
-import { getStaffById } from "@/lib/mock-data"
 import type { Expense } from "@/types"
 import { CheckCircle2, Minus } from "lucide-react"
 

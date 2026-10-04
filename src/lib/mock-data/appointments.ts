@@ -12,6 +12,17 @@ const staffIds = [
   "staff-007",
 ]
 
+// Therapists do not book evenly: senior staff carry fuller calendars and
+// newer ones ramp up. Picking uniformly from `staffIds` makes every therapist
+// land within a few percent of each other, which leaves the leaderboard and
+// the top-earner charts with nothing to show. These weights spread the roster
+// across roughly a 2:1 range between the busiest and the quietest.
+const staffWeights = [26, 22, 18, 14, 10, 7, 3]
+
+const weightedStaffIds = staffIds.flatMap((id, i) =>
+  Array.from({ length: staffWeights[i] }, () => id)
+)
+
 const clientIds = Array.from({ length: 35 }, (_, i) =>
   `client-${String(i + 1).padStart(3, "0")}`
 )
@@ -27,28 +38,37 @@ function pseudoInt(min: number, max: number, seed: number): number {
   return min + (Math.abs(seed) % (max - min + 1))
 }
 
+// Total appointments generated, and how many of them land in the past.
+// The remainder (TOTAL - PAST) are upcoming appointments within the next 14 days.
+const TOTAL_APPOINTMENTS = 1600
+const PAST_APPOINTMENTS = 1520
+
 function generateAppointments(): Appointment[] {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const appointments: Appointment[] = []
 
-  // 250 appointments: spread across -90 days to +14 days (104 day window)
-  for (let i = 0; i < 250; i++) {
+  // 1,600 appointments spread across -90 days to +14 days (104 day window).
+  // Sized so that a 7-therapist spa books ~17 appointments/day, which keeps
+  // revenue in a realistic ratio to the payroll and rent in ./expenses.
+  for (let i = 0; i < TOTAL_APPOINTMENTS; i++) {
     const seed1 = (i * 17 + 3) % 1000
     const seed2 = (i * 31 + 7) % 1000
     const seed3 = (i * 13 + 11) % 1000
     const seed4 = (i * 23 + 5) % 1000
     const seed5 = (i * 37 + 19) % 1000
 
-    // Distribute days: most in past 90 days, some in future 14 days
-    // ~230 past appointments, ~20 future
+    // Distribute days: most in the past 90 days, some in the next 14.
+    // Day 0 sits in the past bucket so that today gets the same booking
+    // density as any other day — the dashboard's "today" metrics read from
+    // real rows instead of falling back to a constant.
     let dayOffset: number
-    if (i < 230) {
-      // Past: -90 to -1 days
-      dayOffset = -(pseudoInt(1, 90, seed1))
+    if (i < PAST_APPOINTMENTS) {
+      // Today through 90 days ago
+      dayOffset = -(pseudoInt(0, 90, seed1))
     } else {
-      // Future: +0 to +14 days
-      dayOffset = pseudoInt(0, 14, seed1)
+      // Future: +1 to +14 days
+      dayOffset = pseudoInt(1, 14, seed1)
     }
 
     const appointmentDate =
@@ -60,16 +80,19 @@ function generateAppointments(): Appointment[] {
     const minute = pseudoChoice(minuteOptions, seed3)
     const scheduledAt = setMinutes(setHours(appointmentDate, hour), minute)
 
-    const staffId = pseudoChoice(staffIds, seed2)
+    const staffId = pseudoChoice(weightedStaffIds, seed2)
     const clientId = pseudoChoice(clientIds, (i * 7 + 3))
     const serviceId = pseudoChoice(serviceIds, seed3)
     const service = services.find((s) => s.id === serviceId)!
 
     // Status distribution
-    // Future appointments must be SCHEDULED
-    // Past: 70% COMPLETED, 12% CANCELLED, 8% NO_SHOW, 10% SCHEDULED should be 0 for past
+    // Future appointments must be SCHEDULED. Today's are split by the clock:
+    // slots that have already passed are finished, later ones are still booked.
+    // Past: 70% COMPLETED, 12% CANCELLED, 8% NO_SHOW, 10% COMPLETED
     let status: Appointment["status"]
-    if (dayOffset >= 0) {
+    if (dayOffset > 0) {
+      status = "SCHEDULED"
+    } else if (dayOffset === 0 && scheduledAt.getTime() > Date.now()) {
       status = "SCHEDULED"
     } else {
       const statusSeed = seed4 % 100
